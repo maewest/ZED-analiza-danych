@@ -1,0 +1,385 @@
+---
+title: "Raport z analizy danych"
+author: "Sandra Żrałka 106595"
+date: "`r format(Sys.time(), '%d %B %Y')`"
+output: html_document
+  
+---
+<style>
+a.content_table {
+display: block;
+}
+</style>
+<h3>Spis treści</h3>
+
+<a class="content_table" href="#Podsumowanie">Podsumowanie</a>
+<a class="content_table" href="#zad1">Ładowanie bibliotek</a>
+<a class="content_table" href="#zad2">Kod zapewniający powtarzalność wyniku</a>
+<a class="content_table" href="#zad3">Wczytanie danych</a>
+<a class="content_table" href="#zad4">Kod usuwający niedozwolone wartości</a>
+<a class="content_table" href="#zad5">Kod pozostawiający unikatowe wartości kolumn</a>
+<a class="content_table" href="#zad6">Podsumowanie kolumn</a>
+<a class="content_table" href="#zad7">Korelacja między kolumnami</a>
+<a class="content_table" href="#zad8">Liczba przykładów dla każdej klasy</a>
+<a class="content_table" href="#zad9">Rozkład liczby atomów i liczby elektronów</a>
+<a class="content_table" href="#zad10">Odwzorowanie wykresu</a>
+<a class="content_table" href="#zad11">Tabela pokazująca 10 klas z największą niezgodnością liczby atomów i elektonów</a>
+<a class="content_table" href="#zad12">Rozkład wartości kolumn zaczynających się od part 01</a>
+<a class="content_table" href="#zad13">Sekcja sprawdzająca czy na podstawie kolumn da się przewidzieć liczbę atomów i elektronów</a>
+<a class="content_table" href="#zad14">Klasyfikator</a>
+
+
+<h3 id="Podsumowanie">Podsumowanie</h3>
+
+Celem projektu jest zapoznanie się ze zbiorem danym pochądzącym z bazy <a href="http://www.rcsb.org/pdb/home/home.do"> Protein Data Bank</a> analiza tych danych, a następnie przygotowanie raportu. 
+
+W projekcie zostały wykorzystane następujące biblioteki:
+
+* knitr - ułatwiająca przejrzyste tworzenie raportów,
+
+* dplyr - ułatwiająca pracę na data frame'ach,
+
+* RColorBrewer - ułatwiająca operowanie kolorami,
+
+* corrplot - umożliwiająca wizualne przedtawienie korelacji,
+
+* ggplot2 - umożliwiająca graficzną analizę danych,
+
+* MASS - potrzebna do użycia funckji kde2d - służącej do wyznaczenia dwuwymiarowego jądrowego estymatora gęstości,
+
+* caret - ułatwiająca tworzenie klasyfikatorów oraz modeli regresji.
+
+W celu zapewnienia powtarzalności losowych wyników wykorzystano funkcję set.seed(). Dane zostały załadowane z pliku all_summary.csv. 
+
+Aby usunąć niedozwolone klasy res_name, w sekcji 4 został utworzony wektor, zawierający zbędne wartości, który w następnej sekcji został wykorzystany w funkcji filter, do ograniczenia zbioru danych. W celu uniknięcia przeuczenia klasyfikatora, ograniczono się do kolumn zawierających unikalną kombinację kolumn pdb_code oraz res_name.
+
+W kolejnej sekcji znajduje się tabela przedstawiająca podsumowanie wszystkich kolumn analizowanego zbioru danych, która pozwoliła na określenie, które kolumny powinny zostać wykorzystane do wizualnego przedstawienia korelacji, a które przy tworzeniu klasyfikatora.
+
+Sekcja 7 przedstawia korelację pomiędzy kolumnami zbioru danych zawierających wartości numeryczne. Na wykresach nie uwzględniono kolumn rozpoczynających się od "part_", ponieważ występuje w nich dużo wartości NA. W celu zwiększenia czytelności kolumny zostały podzielone na 2 grupy, które są w bardzo niewielkim stopniu lub w ogóle nie są wzajemnie skorelowane.
+
+Tabela z sekcji 8 przedstawiająca ilość wystąpień poszczególnych klas, ograniczoną do wartości res_name, które wystąpiły więcej niż 50 razy. Pozwoliło to zauważyć, które klasy nie powinny zostać uwzględnione w klasyfikatorze z uwagi na ich małą liczność.
+
+Kolejne dwie sekcje pozwalają na zauważenie zależności pomiędzy liczbą elektronów oraz liczbą atomów w cząsteczce.
+
+Sekcja 11 prezentuje tabele, które obrazują różnicę średnich między rzeczywistą, a przewidywaną liczbą atomów/elektornów. W każdej z klas uwzględniono 10 klas o największych różnicach.
+
+Sekcja 12 obrazuje rozkłady wartości dla kolumn, których nazwy rozpoczynają się od part 01. Na wykresach można zauważyć, że niektóre kolumny posiadają obserwacje odstające - outlier, które znacząco wpływają na wartość średnią i mogłyby wpływać na wynik klasyfikacji.
+
+W następnej sekcji można zauważyć, że na podstawie wartości innych kolumn można z dużą dokładnością przewidzieć liczbę atomów oraz liczbę elektronów przy niskiej średniej kwadratowej błędów. Następnie wylistowano kolumny, które w dużym stopniu wpływają na jakość tego wyniku. Tak jak pokazały to już sekcja 10 i 11 widać wyraźnie zależność między liczbą atomów i elektronów.
+
+W ostatniej sekcji został skonstruowany klasyfikator, w którym odrzucono kolumny o częstych wystąpieniach wartości NA oraz kolumny, dla których wszystkie przypadki posiadały taką samą wartość. Podczas konstrukcji klasyfikatora wykorzystano tylko klasy posiadające więcej niż 50 przykładów. Ważnym elementem przy ograniczeniu rozpatrywanych klas było usunięcie niewykorzystanych poziomów w typie wyliczeniowym zmiennej res_name. Funkcja createDataPartition zapewnia utworzenie stratyfikowanego zbioru testowego. 
+Podczas tworzenia klasyfikatora zostały porównane 3 algorytmy: random forest, knn oraz logit boost. Logic boost okazał się najbardziej skuteczny na podstawie miary accuracy. Niewiele odstaje od niego algorytm lasów losowych. Natomiast algorytm k-najbliższych sąsiadów zupełnie się w tym przypadku nie sprawdził.
+
+Na koniec została zaprezentowana tablica pomyłek dla algorytmu logit boost. Oraz miary dokładności klasyfikacji dla poszczególnych klas. Duży problem występuje dla klasy ACT: często klasa EDO jest klasyfikowana jako ACT. Podobnie dla klasy FE2, która zawsze jest klasyfikowana jako FE. Klasy NAP oraz NAD są ze sobą mylone.
+
+<h3 id="zad1">Ładowanie bibliotek</h3>
+
+```{r libraries, error=FALSE, warning=FALSE, message=FALSE, echo=TRUE}
+library(knitr)
+library(dplyr)
+library(corrplot)
+library(ggplot2)
+library(RColorBrewer)
+library(MASS)
+library(caret)
+```
+
+<h3 id="zad2">Kod zapewniający powtarzalność wyniku</h3>
+
+```{r setSseed, cache=TRUE, error=FALSE, warning=FALSE, message=FALSE, echo=TRUE}
+set.seed(23)
+```
+
+<h3 id="zad3">Wczytanie danych</h3>
+
+
+```{r loadingData, cache=TRUE, error=FALSE, warning=FALSE, message=FALSE, echo=TRUE}
+d <- read.csv(file="all_summary.csv", sep=";")
+```
+
+<h3 id="zad4">Kod usuwający niedozwolone wartości</h3>
+
+```{r forbiddenValues, cache=TRUE, error=FALSE, warning=FALSE, message=FALSE, echo=TRUE}
+forbidden_values <- c("DA","DC","DT", "DU", "DG", "DI","UNK", "UNX", "UNL", "PR", "PD", "Y1", "EU", "N", "15P", "UQ", "PX4", "NAN")
+```
+
+<h3 id="zad5">Kod pozostawiający unikatowe wartości kolumn</h3>
+
+```{r uniqueValues, cache=TRUE, error=FALSE, warning=FALSE, message=FALSE, echo=TRUE}
+
+filtered_values <- d %>% 
+                  filter(!(res_name %in% forbidden_values)) %>%
+                  mutate(key_value=paste(pdb_code, res_name, sep=" " )) %>%
+                  distinct(key_value)
+```
+
+<h3 id="zad6">Podsumowanie kolumn</h3>
+
+```{r shortSummary, cache=TRUE, error=FALSE, warning=FALSE, message=FALSE, echo=FALSE}
+kable(summary(filtered_values))
+```
+
+<h3 id="zad7">Korelacja między kolumnami</h3> 
+
+```{r correlation, cache=TRUE, error=FALSE, warning=FALSE, message=FALSE, echo=FALSE,  out.width='2050px'}
+#znalezienie kolumn liczbowych
+nums <- sapply(filtered_values, is.numeric)
+numeric_columns <- filtered_values[ , nums]
+
+#usuwanie pierwszych 11 kolumn
+clean_columns <- dplyr::select(numeric_columns, -(1:11))
+without_parts <- dplyr::select(clean_columns, -starts_with("part"))
+#inne kolumny, w których występuje NA
+without_na <- dplyr::select(without_parts, -local_min, -grid_space, -solvent_radius, -solvent_opening_radius, -resolution_max_limit)
+
+'#Kod pozwalający zobaczyć korelację bez podziału na podgrupy 
+rm_na <-without_na[complete.cases(without_na),]
+corgraph <- cor(rm_na)
+corrplot(corgraph, method="square", tl.cex = 0.4, tl.col = "black")'
+
+#podział na podgrupy
+first_part <- dplyr::select(without_na, 1:21)
+rm_na1 <-first_part[complete.cases(first_part),]
+corgraph1 <- cor(rm_na1)
+corrplot(corgraph1, method="square", tl.cex = 0.4, tl.col = "black")
+
+second_part <- dplyr::select(without_na, -(1:17))
+rm_na2 <-second_part[complete.cases(second_part),]
+corgraph2 <- cor(rm_na2)
+corrplot(corgraph2, method="square", tl.cex = 0.4, tl.col = "black")
+
+```
+
+<h3 id="zad8">Liczba przykładów dla każdej klasy</h3>
+
+```{r count(res_name), cache=TRUE, error=FALSE, warning=FALSE, message=FALSE, echo=FALSE}
+number <- group_by(filtered_values, res_name) %>%
+          summarize(count = n()) %>%
+          filter(count>=50) %>%
+          arrange(desc(count)) 
+kable(number)
+```
+
+<h3 id="zad9">Rozkład liczby atomów i liczby elektronów</h3>
+
+```{r histograms, cache=TRUE, error=FALSE, warning=FALSE, message=FALSE, echo=FALSE}
+e <- density(filtered_values$local_res_atom_non_h_electron_sum) 
+a <- density(filtered_values$local_res_atom_non_h_count)
+plot(e, main="Rozkład liczby elektronów")
+plot(a, main="Rozkład liczby atomów") 
+
+```
+
+<h3 id="zad10">Odwzorowanie wykresu</h3>
+
+```{r plot, cache= TRUE, error=FALSE, warning=FALSE, message=FALSE, echo=FALSE}
+
+p_d <- dplyr::select(filtered_values, local_res_atom_non_h_electron_sum, local_res_atom_non_h_count )
+
+rf <- colorRampPalette(rev(brewer.pal(11,'Spectral')))
+r <- rf(32)
+h1 <- hist(p_d$local_res_atom_non_h_electron_sum, breaks=150, plot=F)
+h2 <- hist(p_d$local_res_atom_non_h_count, breaks=90, plot=F)
+top <- max(h1$counts, h2$counts)
+k <- kde2d(p_d$local_res_atom_non_h_electron_sum, p_d$local_res_atom_non_h_count, n=250)
+
+# marginesy
+oldpar <- par()
+par(mar=c(3,3,1,1))
+layout(matrix(c(2,0,1,3),2,2,byrow=T),c(3,1), c(1,3))
+#rysowanie wykresu
+image(k, col=r) 
+#dodanie histogramów z marginesami
+par(mar=c(0,1.9,1,0))
+barplot(h1$counts, axes=F, ylim=c(0, top), space=0, col='red')
+par(mar=c(2.3,0,0.5,1))
+barplot(h2$counts, axes=F, xlim=c(0, top), space=0, col='red', horiz=T)
+
+```
+
+<h3 id="zad11">Tabela pokazująca 10 klas z największą niezgodnością liczby atomów i elektonów</h3>
+
+```{r tables, cache=TRUE, error=FALSE, warning=FALSE, message=FALSE, echo=FALSE}
+atom_count <- group_by(filtered_values, res_name) %>%
+              summarize(local = mean(local_res_atom_non_h_count), 
+                        dict = mean(dict_atom_non_h_count))
+
+diff1 <- mutate(atom_count, difference = abs(local - dict)) %>%
+         arrange(desc(difference)) %>%
+         head(10)
+       
+kable(diff1, caption = "Największe niezgodności liczby atomów")
+
+electron_count <- group_by(filtered_values, res_name) %>%
+                  summarize(local = mean(local_res_atom_non_h_electron_sum), 
+                            dict = mean(dict_atom_non_h_electron_sum))
+
+diff2 <- mutate(electron_count, difference = abs(local - dict)) %>%
+         arrange(desc(difference)) %>%
+         head(10)
+ 
+kable(diff2, caption = "Największe niezgodności liczby elektronów")
+
+```
+
+<h3 id="zad12">Rozkład wartości kolumn zaczynających się od part_01</h3>
+
+```{r part01z,  error=FALSE, warning=FALSE, message=FALSE, echo=FALSE}
+
+part <- dplyr::select(filtered_values, starts_with("part_01") )
+
+cn <- colnames(part)
+
+for(i in seq_along(cn))
+{
+  my_data <- part[i]
+  cc <-my_data[complete.cases(my_data),]
+  mean_value <- mean(cc)
+  x_lab <- colnames(my_data)
+  colnames(my_data) <- "name"
+  print(ggplot(my_data, aes(x=name)) + 
+          geom_histogram() +
+          xlab(x_lab) +
+          geom_vline(aes(xintercept=mean_value),   
+               color="red", linetype="dashed", size=1) +
+          geom_text(data=my_data, mapping=aes(x=mean_value, y=0,
+                                              label=round(mean_value, digits =2)),
+                    colour="red", size=4, angle=90,vjust=-0.4, hjust=-1))
+        
+}
+
+```
+
+<h3 id="zad13">Sekcja sprawdzająca czy na podstawie kolumn da się przewidzieć liczbę atomów i elektronów</h3>
+
+```{r regression, cache=TRUE, error=FALSE, warning=FALSE, message=FALSE, echo=FALSE}
+  
+regression_e <- lm(clean_columns$local_res_atom_non_h_electron_sum ~ . , data = clean_columns)
+r2_e <- summary(regression_e)$r.squared
+rmse_e <- summary(regression_e)$sigma
+
+el <- c(r2_e, rmse_e)
+
+regression_a <- lm(clean_columns$local_res_atom_non_h_count ~ . , data = clean_columns)
+r2_a <- summary(regression_a)$r.squared
+rmse_a <- summary(regression_a)$sigma
+
+at <- c(r2_a, rmse_a)
+
+reg <- rbind(el, at)
+colnames(reg) <- c("r^2", "RMSE")
+rownames(reg) <-c ("local_res_atom_non_h_electron_sum", "local_res_atom_non_h_count")
+
+kable(reg)
+
+
+reg_na <-clean_columns[complete.cases(clean_columns),]
+a <- ncol(reg_na)
+table_row_names <- colnames(reg_na)
+table_col_names <- c("r^2","RMSE")
+
+electron_table <- matrix(ncol=2, nrow=a)
+rownames(electron_table) <- table_row_names
+colnames(electron_table) <- table_col_names
+
+atom_table <- matrix(ncol=2, nrow=a)
+rownames(atom_table) <- table_row_names
+colnames(atom_table) <- table_col_names
+
+for(i in 1:a)
+{
+  my_data <- reg_na[i]
+  v <- as.vector(t(my_data))
+  fit1 <- lm(reg_na$local_res_atom_non_h_electron_sum ~ v)
+  rs1 <- summary(fit1)
+  electron_table[i,1] <- round(rs1$r.squared, digits=6)
+  electron_table[i,2] <- round(rs1$sigma, digits=6)
+  fit2 <- lm(reg_na$local_res_atom_non_h_count ~ v)
+  rs2 <- summary(fit2)
+  atom_table[i,1] <- round(rs2$r.squared, digits=6)
+  atom_table[i,2] <- round(rs2$sigma, digits=6)
+}
+
+e_t <- electron_table[electron_table[, "r^2"] >= 0.6,]
+e_t <- e_t[order(e_t[,1],decreasing=TRUE),]
+e_t <- e_t[order(e_t[,2]),]
+e_t <- e_t[-1,]
+kable(e_t)
+
+
+a_t <- atom_table[atom_table[, "r^2"] >= 0.6,]
+a_t <- a_t[order(a_t[,1],decreasing=TRUE),]
+a_t <- a_t[order(a_t[,2]),]
+a_t <- a_t[-1,]
+kable(a_t)
+
+
+```
+
+<h3 id="zad14">Klasyfikator</h3>
+
+```{r classification, cache=TRUE, error=FALSE, warning=FALSE, message=FALSE, echo=FALSE}
+
+# korzystanie ze zbioru number, który ma klasy z licznością 50+,
+#kolumny do wyrzucenia: 1,2 bo id,4-16 z powodu na; 32-721 party; 732 same NA; local_min -same zera; grid_space - same 0.2;	solvent_radius - same 1.9;	solvent_opening_radius - same 1.4;	resolution_max_limit same 2; fo_col,	fc_col - te same wartości tekstowe; part_step_FoFc_std_min,	part_step_FoFc_std_max	part_step_FoFc_std_step - takie same wartości,
+
+selected_data <- dplyr::select(filtered_values, -(1:2), -(4:16), -(32:721), -732, -796, -local_min, -grid_space, -solvent_radius, - solvent_opening_radius, -resolution_max_limit, -fo_col,	-fc_col, -part_step_FoFc_std_min,	-part_step_FoFc_std_max,	-part_step_FoFc_std_step)
+selected_data <-selected_data[complete.cases(selected_data),]
+
+
+my_values <- as.vector(t(number[1]))
+
+selected_data <- filter(selected_data, res_name %in% my_values)
+
+#usuwanie niewykorzystanych poziomów
+selected_data <- mutate(selected_data, res_name2 = droplevels(selected_data$res_name))
+selected_data <- dplyr::select(selected_data, -res_name)
+
+inTraining <- createDataPartition(selected_data$res_name2, p = .7, list = FALSE)
+training <- selected_data[ inTraining,]
+testing  <- selected_data[-inTraining,]
+
+gridCtrl <- trainControl(
+  method = "repeatedcv",
+  classProbs = TRUE,
+  number = 2,
+  repeats = 2)
+
+
+rfGrid <- expand.grid(mtry = 2:50)
+rfFit <- train(res_name2~., 
+               data=training, 
+               method="rf", 
+               preProc = c("center", "scale"),
+               trControl = gridCtrl,
+               tuneGrid = rfGrid,
+               ntree = 25)
+
+knnGrid <- expand.grid(k = 10:30)
+knnFit <- train(res_name2~., 
+                 data=training, 
+                 method="knn", 
+                 trControl = gridCtrl,
+                 tuneGrid = knnGrid)
+
+lbGrid <- expand.grid(nIter = 1:10)
+lbFit <- train(res_name2~., 
+               data=training, 
+               method="LogitBoost", 
+               trControl = gridCtrl,
+               tuneGrid = lbGrid)
+
+resamps <- resamples(list(RF = rfFit, KNN = knnFit, LB = lbFit))
+summary(resamps)
+trellis.par.set(caretTheme())
+dotplot(resamps, metric = "Accuracy")
+
+rfClasses1 <- predict(lbFit, newdata = testing)
+confM <- confusionMatrix(data = rfClasses1, testing$res_name2)
+kable(confM$table)
+kable(confM$overall)
+kable(confM$byClass)
+kable(confM$dots)
+
+
+```
